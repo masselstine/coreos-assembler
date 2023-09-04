@@ -756,7 +756,7 @@ echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
 fi
-/sbin/reboot -f
+/usr/sbin/reboot -f
 EOF
     chmod a+x "${vmpreparedir}"/init
     (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)

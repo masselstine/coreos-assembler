@@ -8,8 +8,8 @@ set -euo pipefail
 # any consecutive runs should produce the same result.
 
 # Detect what platform we are on
-if ! grep -q '^Fedora' /etc/redhat-release; then
-    echo 1>&2 "should be on either Fedora"
+if ! grep -q '^ID=ellesmere' /etc/os-release; then
+    echo 1>&2 "should be on Ellesmere"
     exit 1
 fi
 
@@ -31,33 +31,18 @@ srcdir=$(pwd)
 configure_yum_repos() {
     local version_id
     version_id=$(. /etc/os-release && echo ${VERSION_ID})
-    # Add continuous tag for latest build tools and mark as required so we
-    # can depend on those latest tools being available in all container
-    # builds.
-    echo -e "[f${version_id}-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f${version_id}-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
+    echo -e "[f${version_id}-wr-distro]\nenabled=1\nmetadata_expire=1m\nbaseurl=http://10.0.2.2:5555/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/wr-distro.repo
 }
 
 install_rpms() {
     local builddeps
     local frozendeps
 
+    # Fix some packages on specific versions
     frozendeps=""
 
-    # freeze grub2 for https://github.com/coreos/coreos-assembler/issues/3370
-    case "${arch}" in
-        x86_64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-x64,pc,pc-modules}-1:2.06-76.fc38);;
-        aarch64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-aa64}-1:2.06-76.fc38);;
-        ppc64le) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,ppc64le,ppc64le-modules}-1:2.06-76.fc38);;
-        *) ;;
-    esac
-
-    # First, a general update; this is best practice.  We also hit an issue recently
-    # where qemu implicitly depended on an updated libusbx but didn't have a versioned
-    # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
-    yum -y distro-sync
-
     # xargs is part of findutils, which may not be installed
-    yum -y install /usr/bin/xargs
+    dnf -y install findutils
 
     # These are only used to build things in here.  Today
     # we ship these in the container too to make it easier
@@ -67,26 +52,15 @@ install_rpms() {
     builddeps=$(grep -v '^#' "${srcdir}"/src/build-deps.txt)
 
     # Process our base dependencies + build dependencies and install
-    (echo "${builddeps}" && echo "${frozendeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
+    (echo "${builddeps}" && echo "${frozendeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs dnf -y install
 
     # Add fast-tracked packages here.  We don't want to wait on bodhi for rpm-ostree
     # as we want to enable fast iteration there.
-    yum -y --enablerepo=updates-testing upgrade rpm-ostree
-
-    # Delete file that only exists on ppc64le because it is causing
-    # sudo to not work.
-    # https://bugzilla.redhat.com/show_bug.cgi?id=2082149
-    rm -f /etc/security/limits.d/95-kvm-memlock.conf
-
-    # Commented out for now, see above
-    #dnf remove -y ${builddeps}
-    # can't remove grubby on el7 because libguestfs-tools depends on it
-    # Add --exclude for s390utils-base because we need it to not get removed.
-    rpm -q grubby && yum remove --exclude=s390utils-base -y grubby
+    #dnf -y --enablerepo=updates-testing upgrade rpm-ostree
 
     # Allow Kerberos Auth to work from a keytab. The keyring is not
     # available in a Container.
-    sed -e "s/^.*default_ccache_name/#    default_ccache_name/g" -i /etc/krb5.conf
+    #sed -e "s/^.*default_ccache_name/#    default_ccache_name/g" -i /etc/krb5.conf
 
     # Open up permissions on /boot/efi files so we can copy them
     # for our ISO installer image, skip if not present
@@ -94,9 +68,9 @@ install_rpms() {
         chmod -R a+rX /boot/efi
     fi
     # Similarly for kernel data and SELinux policy, which we want to inject into supermin
-    chmod -R a+rX /usr/lib/modules /usr/share/selinux/targeted
+    #chmod -R a+rX /usr/lib/modules /usr/share/selinux/targeted
     # Further cleanup
-    yum clean all
+    dnf clean all
 }
 
 # For now, we ship `oc` in coreos-assembler as {Fedora,RHEL} CoreOS is an essential part of OCP4,

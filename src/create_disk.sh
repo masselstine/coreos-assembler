@@ -286,11 +286,11 @@ rootfs=/tmp/rootfs
 rm -rf ${rootfs}
 mkdir -p ${rootfs}
 mount -o discard "${root_dev}" ${rootfs}
-chcon "$(matchpathcon -n /)" ${rootfs}
+#chcon "$(matchpathcon -n /)" ${rootfs}
 mkdir ${rootfs}/boot
-chcon "$(matchpathcon -n /boot)" $rootfs/boot
+#chcon "$(matchpathcon -n /boot)" $rootfs/boot
 mount "${boot_dev}" $rootfs/boot
-chcon "$(matchpathcon -n /boot)" $rootfs/boot
+#chcon "$(matchpathcon -n /boot)" $rootfs/boot
 # FAT doesn't support SELinux labeling, it uses "genfscon", so we
 # don't need to give it a label manually.
 if [ ${EFIPN:+x} ]; then
@@ -299,7 +299,7 @@ if [ ${EFIPN:+x} ]; then
 fi
 if [[ ${secure_execution} -eq 1 ]]; then
     mkdir ${rootfs}/se
-    chcon "$(matchpathcon -n /boot)" $rootfs/se
+    #chcon "$(matchpathcon -n /boot)" $rootfs/se
 fi
 
 # Now that we have the basic disk layout, initialize the basic
@@ -479,7 +479,7 @@ x86_64)
         # https://github.com/coreos/fedora-coreos-tracker/issues/32
         # Install BIOS/PReP bootloader using the target system's grub2-install,
         # see https://github.com/coreos/coreos-assembler/issues/3156
-        chroot_run /sbin/grub2-install \
+        chroot_run /sbin/grub-install \
             --target i386-pc \
             --boot-directory $rootfs/boot \
             --modules mdraid1x \

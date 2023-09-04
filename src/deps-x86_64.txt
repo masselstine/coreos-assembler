@@ -1,2 +1,2 @@
 # For generating ISO images
-syslinux-nonlinux
+syslinux-misc

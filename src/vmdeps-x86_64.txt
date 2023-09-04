@@ -1,9 +1,9 @@
 # For grub install when creating images without anaconda
-grub2
+grub
 bootupd
 
 # For creating bootable UEFI media on x86_64
-shim-x64 grub2-efi-x64
+shim grub-efi
 
 # For pxe install kola testing (uses grub2-mknetdir)
-grub2-tools-extra
+grub-common
